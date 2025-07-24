@@ -16,7 +16,9 @@ Destroy all asteroids while avoiding collisions and enemy fire. Each level becom
 ### Ship
 - Your triangular spaceship starts in the center of the screen
 - The ship maintains momentum when you stop thrusting (realistic physics)
-- When destroyed, you become invulnerable for 3 seconds after respawning
+- When destroyed by collision, the ship breaks apart into spinning debris pieces
+- After destruction, you respawn after 3 seconds with temporary invulnerability
+- The ship won't respawn if asteroids or aliens are too close to the spawn point
 - You start with 3 lives
 
 ### Asteroids

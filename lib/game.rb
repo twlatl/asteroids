@@ -6,6 +6,7 @@ require_relative 'asteroid'
 require_relative 'bullet'
 require_relative 'alien'
 require_relative 'particle'
+require_relative 'ship_debris'
 
 class Game < Gosu::Window
   WIDTH = 1024
@@ -35,12 +36,14 @@ class Game < Gosu::Window
     @bullets = []
     @aliens = []
     @particles = []
+    @ship_debris = []
     @score = 0
     @lives = 3
     @level = 1
     @last_alien_spawn = 0
     @game_over = false
     @paused = false
+    @respawn_timer = 0
   end
 
   def create_initial_asteroids
@@ -65,15 +68,25 @@ class Game < Gosu::Window
     
     return if @game_over || @paused
 
-    @ship.update
+    @ship.update unless @ship.destroyed?
     @bullets.each(&:update)
     @asteroids.each(&:update)
     @aliens.each(&:update)
     @particles.each(&:update)
+    @ship_debris.each(&:update)
 
-    # Remove old bullets and particles
+    # Remove old bullets, particles, and debris
     @bullets.reject! { |bullet| bullet.should_remove? }
     @particles.reject! { |particle| particle.should_remove? }
+    @ship_debris.reject! { |debris| debris.should_remove? }
+
+    # Handle ship respawn timer
+    if @ship.destroyed? && @respawn_timer > 0
+      @respawn_timer -= 1
+      if @respawn_timer <= 0
+        respawn_ship
+      end
+    end
 
     # Spawn alien ships
     spawn_alien if should_spawn_alien?
@@ -205,13 +218,43 @@ class Game < Gosu::Window
   end
 
   def ship_destroyed
+    return if @ship.destroyed? # Prevent multiple destruction calls
+    
     create_explosion_particles(@ship.x, @ship.y, 15)
+    @ship.destroy # This will create debris pieces
     @lives -= 1
     
     if @lives <= 0
       @game_over = true
     else
+      @respawn_timer = 180 # 3 seconds at 60 FPS
+    end
+  end
+
+  def respawn_ship
+    # Only respawn if there are no asteroids or aliens too close to spawn point
+    safe_to_respawn = true
+    
+    @asteroids.each do |asteroid|
+      distance = Math.sqrt((SHIP_SPAWN_X - asteroid.x)**2 + (SHIP_SPAWN_Y - asteroid.y)**2)
+      if distance < 100
+        safe_to_respawn = false
+        break
+      end
+    end
+    
+    @aliens.each do |alien|
+      distance = Math.sqrt((SHIP_SPAWN_X - alien.x)**2 + (SHIP_SPAWN_Y - alien.y)**2)
+      if distance < 100
+        safe_to_respawn = false
+        break
+      end
+    end
+    
+    if safe_to_respawn
       @ship.respawn(SHIP_SPAWN_X, SHIP_SPAWN_Y)
+    else
+      @respawn_timer = 30 # Try again in half a second
     end
   end
 
@@ -221,6 +264,7 @@ class Game < Gosu::Window
     @bullets.clear
     @aliens.clear
     @particles.clear
+    @ship_debris.clear
   end
 
   def draw
@@ -230,6 +274,7 @@ class Game < Gosu::Window
     @bullets.each(&:draw)
     @aliens.each(&:draw)
     @particles.each(&:draw)
+    @ship_debris.each(&:draw)
 
     # Draw UI
     draw_ui
@@ -307,5 +352,11 @@ class Game < Gosu::Window
 
   def add_bullet(bullet)
     @bullets << bullet
+  end
+
+  def create_ship_debris(x, y, vertices, velocity_x, velocity_y)
+    debris = ShipDebris.new(x, y, vertices, velocity_x, velocity_y)
+    @ship_debris << debris
+    debris
   end
 end

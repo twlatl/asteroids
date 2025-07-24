@@ -1,4 +1,11 @@
-# Asteroids Game - Project Summary
+# Asteroids Ga├── lib/
+    ├── game.rb           # Main game class and loop
+    ├── ship.rb           # Player spaceship
+    ├── asteroid.rb       # Asteroid objects (large, medium, small)
+    ├── bullet.rb         # Bullet projectiles
+    ├── alien.rb          # Enemy alien ships
+    ├── particle.rb       # Explosion particle effects
+    └── ship_debris.rb    # Ship destruction debris piecesoject Summary
 
 ## Overview
 A complete implementation of the classic Asteroids arcade game in Ruby using the Gosu graphics library. This faithful recreation includes all the core gameplay mechanics from the original 1979 Atari game.
@@ -37,6 +44,8 @@ asteroids/
 - ✅ Alien ships that appear every 60 seconds
 - ✅ AI targeting for alien ships
 - ✅ Particle explosion effects
+- ✅ Ship destruction animation with spinning debris pieces
+- ✅ Safe respawn system (won't respawn near hazards)
 - ✅ Invulnerability period after ship destruction
 - ✅ Pause functionality
 - ✅ Game over and restart mechanics

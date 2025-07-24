@@ -2,6 +2,7 @@
 
 require 'gosu'
 require_relative 'bullet'
+require_relative 'ship_debris'
 
 class Ship
   attr_reader :x, :y, :radius
@@ -18,11 +19,12 @@ class Ship
     @angle = 0
     @velocity_x = 0
     @velocity_y = 0
-    @radius = 8
+    @radius = 16
     @last_shot = 0
     @shot_cooldown = 150 # milliseconds between shots
     @invulnerable_until = 0
     @destroyed = false
+    @debris_created = false
   end
 
   def update
@@ -94,6 +96,7 @@ class Ship
     @angle = 0
     @invulnerable_until = Gosu.milliseconds + INVULNERABILITY_TIME
     @destroyed = false
+    @debris_created = false
   end
 
   def destroyed?
@@ -102,6 +105,54 @@ class Ship
 
   def destroy
     @destroyed = true
+    create_debris
+  end
+
+  def create_debris
+    return if @debris_created # Prevent creating debris multiple times
+    @debris_created = true
+    
+    # Get the current ship vertices
+    vertices = [
+      [0, -@radius],           # tip
+      [-@radius/2, @radius/2], # bottom left
+      [@radius/2, @radius/2]   # bottom right
+    ]
+
+    # Rotate vertices to current ship orientation
+    rotated_vertices = vertices.map do |vx, vy|
+      angle_rad = Math::PI * @angle / 180
+      cos_a = Math.cos(angle_rad)
+      sin_a = Math.sin(angle_rad)
+      
+      new_x = vx * cos_a - vy * sin_a + @x
+      new_y = vx * sin_a + vy * cos_a + @y
+      [new_x, new_y]
+    end
+
+    # Create debris pieces - each side of the triangle becomes a piece
+    debris_pieces = []
+    
+    # Piece 1: Left side (tip to bottom left)
+    piece1_vertices = [
+      [rotated_vertices[0][0] - @x, rotated_vertices[0][1] - @y], # tip (relative to center)
+      [rotated_vertices[1][0] - @x, rotated_vertices[1][1] - @y]  # bottom left
+    ]
+    debris_pieces << Game.instance.create_ship_debris(@x, @y, piece1_vertices, @velocity_x, @velocity_y)
+    
+    # Piece 2: Right side (tip to bottom right)
+    piece2_vertices = [
+      [rotated_vertices[0][0] - @x, rotated_vertices[0][1] - @y], # tip (relative to center)
+      [rotated_vertices[2][0] - @x, rotated_vertices[2][1] - @y]  # bottom right
+    ]
+    debris_pieces << Game.instance.create_ship_debris(@x, @y, piece2_vertices, @velocity_x, @velocity_y)
+    
+    # Piece 3: Bottom side (bottom left to bottom right)
+    piece3_vertices = [
+      [rotated_vertices[1][0] - @x, rotated_vertices[1][1] - @y], # bottom left (relative to center)
+      [rotated_vertices[2][0] - @x, rotated_vertices[2][1] - @y]  # bottom right
+    ]
+    debris_pieces << Game.instance.create_ship_debris(@x, @y, piece3_vertices, @velocity_x, @velocity_y)
   end
 
   def draw
