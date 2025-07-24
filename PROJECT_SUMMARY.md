@@ -63,7 +63,7 @@ asteroids/
 - **Arrow Keys**: Ship movement (left/right rotate, up thrust)
 - **Spacebar**: Shoot bullets
 - **S Key**: Activate shields (hold to maintain)
-- **P**: Pause/unpause
+- **P Key**: Pause/unpause game
 - **Escape**: Quit game
 
 ### Visual Effects

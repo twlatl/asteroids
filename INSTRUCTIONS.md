@@ -7,9 +7,11 @@ Destroy all asteroids while avoiding collisions and enemy fire. Each level becom
 - **Left Arrow Key**: Rotate ship counterclockwise
 - **Right Arrow Key**: Rotate ship clockwise  
 - **Up Arrow Key**: Thrust forward (accelerate)
-- **Spacebar**: Fire bullets
-- **S Key**: Activate shields (hold to keep active)
-- **P**: Pause/unpause game
+### Controls
+- **Arrow Keys**: Ship movement (left/right rotate, up thrust)
+- **Spacebar**: Shoot bullets
+- **S Key**: Activate shields (hold to maintain)
+- **P Key**: Pause/unpause game
 - **Escape**: Quit game
 
 ## Gameplay Elements

@@ -436,13 +436,33 @@ class Game < Gosu::Window
     overlay = Gosu::Color.new(128, 0, 0, 0)
     Gosu.draw_rect(0, 0, WIDTH, HEIGHT, overlay)
     
-    text = "PAUSED"
+    text = "GAME PAUSED"
     text_width = @large_font.text_width(text)
-    @large_font.draw_text(text, (WIDTH - text_width) / 2, HEIGHT / 2 - 30, 2, 1, 1, Gosu::Color::WHITE)
+    text_height = @large_font.height
+    
+    # Calculate box dimensions
+    box_padding = 20
+    box_width = text_width + (box_padding * 2)
+    box_height = text_height + (box_padding * 2)
+    box_x = (WIDTH - box_width) / 2
+    box_y = (HEIGHT - box_height) / 2
+    
+    # Draw box background
+    Gosu.draw_rect(box_x, box_y, box_width, box_height, Gosu::Color::BLACK, 2)
+    
+    # Draw box border
+    border_width = 3
+    Gosu.draw_rect(box_x, box_y, box_width, border_width, Gosu::Color::WHITE, 2) # Top
+    Gosu.draw_rect(box_x, box_y + box_height - border_width, box_width, border_width, Gosu::Color::WHITE, 2) # Bottom
+    Gosu.draw_rect(box_x, box_y, border_width, box_height, Gosu::Color::WHITE, 2) # Left
+    Gosu.draw_rect(box_x + box_width - border_width, box_y, border_width, box_height, Gosu::Color::WHITE, 2) # Right
+    
+    # Draw text
+    @large_font.draw_text(text, box_x + box_padding, box_y + box_padding, 2, 1, 1, Gosu::Color::WHITE)
     
     continue_text = "Press P to continue"
     continue_width = @font.text_width(continue_text)
-    @font.draw_text(continue_text, (WIDTH - continue_width) / 2, HEIGHT / 2 + 20, 2, 1, 1, Gosu::Color::WHITE)
+    @font.draw_text(continue_text, (WIDTH - continue_width) / 2, box_y + box_height + 30, 2, 1, 1, Gosu::Color::WHITE)
   end
 
   def button_down(id)
