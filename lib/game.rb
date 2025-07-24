@@ -29,6 +29,9 @@ class Game < Gosu::Window
     @font = load_custom_font(24)
     @large_font = load_custom_font(48)
     
+    # Load sounds
+    load_sounds
+    
     @@instance = self
     reset_game
   end
@@ -54,6 +57,93 @@ class Game < Gosu::Window
     Gosu::Font.new(size)
   end
 
+  def load_sounds
+    sounds_path = File.join(File.dirname(__FILE__), '..', 'sounds')
+    
+    @sounds = {}
+    
+    # Load all sound files
+    sound_files = {
+      fire: 'fire.wav',
+      thrust: 'thrust.wav',
+      bang_large: 'bangLarge.wav',
+      bang_medium: 'bangMedium.wav',
+      bang_small: 'bangSmall.wav',
+      saucer_big: 'saucerBig.wav',
+      beat1: 'beat1.wav',
+      beat2: 'beat2.wav'
+    }
+    
+    sound_files.each do |key, filename|
+      file_path = File.join(sounds_path, filename)
+      if File.exist?(file_path)
+        @sounds[key] = Gosu::Sample.new(file_path)
+      else
+        puts "Warning: Sound file not found: #{file_path}"
+        @sounds[key] = nil
+      end
+    end
+    
+    # Initialize background music state
+    @current_beat = nil
+    @saucer_sound = nil
+    @thrust_sound = nil
+  rescue => e
+    puts "Error loading sounds: #{e.message}"
+    @sounds = {}
+  end
+
+  def play_sound(sound_key, volume = 1.0)
+    return unless @sounds[sound_key]
+    @sounds[sound_key].play(volume)
+  end
+
+  def play_looping_sound(sound_key, volume = 1.0)
+    return unless @sounds[sound_key]
+    @sounds[sound_key].play(volume, 1, true) # true for looping
+  end
+
+  def stop_sound(sound_instance)
+    sound_instance&.stop if sound_instance.respond_to?(:stop)
+  end
+
+  def stop_all_sounds
+    # Stop all looping sounds
+    stop_sound(@current_beat)
+    stop_sound(@saucer_sound)
+    stop_sound(@thrust_sound)
+    
+    # Clear sound references
+    @current_beat = nil
+    @saucer_sound = nil
+    @thrust_sound = nil
+    @current_beat_type = nil
+  end
+
+  def update_background_music
+    return if @paused || @game_over
+    
+    # Calculate asteroid percentage remaining
+    initial_asteroid_count = 4 + @level
+    current_asteroid_count = @asteroids.length
+    asteroid_percentage = current_asteroid_count.to_f / initial_asteroid_count.to_f
+    
+    # Switch between beat1 and beat2 based on asteroid count
+    if asteroid_percentage <= 0.3 # Less than 30% asteroids remaining
+      unless @current_beat_type == :beat2
+        stop_sound(@current_beat)
+        @current_beat = play_looping_sound(:beat2, 0.25)
+        @current_beat_type = :beat2
+      end
+    else
+      unless @current_beat_type == :beat1
+        stop_sound(@current_beat)
+        @current_beat = play_looping_sound(:beat1, 0.25)
+        @current_beat_type = :beat1
+      end
+    end
+  end
+
   def reset_game
     @ship = Ship.new(SHIP_SPAWN_X, SHIP_SPAWN_Y)
     @asteroids = create_initial_asteroids
@@ -68,6 +158,13 @@ class Game < Gosu::Window
     @game_over = false
     @paused = false
     @respawn_timer = 0
+    
+    # Stop any current sounds and start background music
+    stop_sound(@current_beat)
+    stop_sound(@saucer_sound)
+    stop_sound(@thrust_sound)
+    @current_beat = play_looping_sound(:beat1, 0.25)
+    @current_beat_type = :beat1
   end
 
   def create_initial_asteroids
@@ -90,8 +187,40 @@ class Game < Gosu::Window
   def update
     update_input
     
-    return if @game_over || @paused
+    if @game_over
+      # Stop background music when game is over
+      if @current_beat
+        stop_sound(@current_beat)
+        @current_beat = nil
+        @current_beat_type = nil
+      end
+      
+      # Continue visual animations even when game is over
+      update_animations_only
+      return
+    end
+    
+    update_background_music
+    
+    return if @paused
 
+    # Full game logic update
+    update_game_logic
+  end
+
+  def update_animations_only
+    # Continue visual updates for game over screen
+    @asteroids.each(&:update)
+    @aliens.each(&:update)
+    @particles.each(&:update)
+    @ship_debris.each(&:update)
+    
+    # Remove old particles and debris but keep asteroids and aliens moving
+    @particles.reject! { |particle| particle.should_remove? }
+    @ship_debris.reject! { |debris| debris.should_remove? }
+  end
+
+  def update_game_logic
     @ship.update unless @ship.destroyed?
     @bullets.each(&:update)
     @asteroids.each(&:update)
@@ -122,7 +251,15 @@ class Game < Gosu::Window
     next_level if @asteroids.empty?
 
     # Clean up dead aliens
+    aliens_before = @aliens.length
     @aliens.reject! { |alien| alien.should_remove? }
+    aliens_after = @aliens.length
+    
+    # Stop saucer sound if all aliens are gone
+    if aliens_before > 0 && aliens_after == 0
+      stop_sound(@saucer_sound)
+      @saucer_sound = nil
+    end
   end
 
   def should_spawn_alien?
@@ -145,6 +282,9 @@ class Game < Gosu::Window
 
     @aliens << Alien.new(x, y, @ship)
     @last_alien_spawn = Gosu.milliseconds
+    
+    # Play saucer sound on loop
+    @saucer_sound = play_looping_sound(:saucer_big, 1.0)
   end
 
   def handle_collisions
@@ -154,6 +294,16 @@ class Game < Gosu::Window
 
       @asteroids.each do |asteroid|
         if collision?(bullet, asteroid)
+          # Play appropriate bang sound
+          case asteroid.size
+          when :large
+            play_sound(:bang_large)
+          when :medium
+            play_sound(:bang_medium)
+          when :small
+            play_sound(:bang_small)
+          end
+          
           # Create explosion particles
           create_explosion_particles(asteroid.x, asteroid.y, 8)
           
@@ -171,6 +321,9 @@ class Game < Gosu::Window
 
       @aliens.each do |alien|
         if collision?(bullet, alien)
+          # Play large bang sound for alien destruction
+          play_sound(:bang_large)
+          
           create_explosion_particles(alien.x, alien.y, 12)
           @score += alien.points
           alien.destroy
@@ -314,12 +467,17 @@ class Game < Gosu::Window
   def ship_destroyed
     return if @ship.destroyed? # Prevent multiple destruction calls
     
+    # Play ship destruction sound
+    play_sound(:bang_large)
+    
     create_explosion_particles(@ship.x, @ship.y, 15)
     @ship.destroy # This will create debris pieces
     @lives -= 1
     
     if @lives <= 0
       @game_over = true
+      # Stop all sounds when game is over
+      stop_all_sounds
     else
       @respawn_timer = 180 # 3 seconds at 60 FPS
     end
@@ -468,12 +626,16 @@ class Game < Gosu::Window
   def button_down(id)
     case id
     when Gosu::KB_ESCAPE
+      stop_all_sounds
       close
     when Gosu::KB_SPACE
       if @game_over
         reset_game
       elsif !@paused
-        @bullets << @ship.shoot if @ship.can_shoot?
+        if @ship.can_shoot?
+          @bullets << @ship.shoot
+          play_sound(:fire)
+        end
       end
     when Gosu::KB_P
       @paused = !@paused unless @game_over
@@ -490,7 +652,21 @@ class Game < Gosu::Window
 
     @ship.turn_left if Gosu.button_down?(Gosu::KB_LEFT)
     @ship.turn_right if Gosu.button_down?(Gosu::KB_RIGHT)
-    @ship.thrust if Gosu.button_down?(Gosu::KB_UP)
+    
+    # Handle thrust and thrust sound
+    if Gosu.button_down?(Gosu::KB_UP)
+      @ship.thrust
+      # Start thrust sound if not already playing
+      if @thrust_sound.nil?
+        @thrust_sound = play_looping_sound(:thrust, 1.0)
+      end
+    else
+      # Stop thrust sound when not thrusting
+      if @thrust_sound
+        stop_sound(@thrust_sound)
+        @thrust_sound = nil
+      end
+    end
     
     # Shield controls
     if Gosu.button_down?(Gosu::KB_S)

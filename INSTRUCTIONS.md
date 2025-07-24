@@ -4,10 +4,6 @@
 Destroy all asteroids while avoiding collisions and enemy fire. Each level becomes progressively more difficult with more asteroids.
 
 ## Controls
-- **Left Arrow Key**: Rotate ship counterclockwise
-- **Right Arrow Key**: Rotate ship clockwise  
-- **Up Arrow Key**: Thrust forward (accelerate)
-### Controls
 - **Arrow Keys**: Ship movement (left/right rotate, up thrust)
 - **Spacebar**: Shoot bullets
 - **S Key**: Activate shields (hold to maintain)
@@ -15,6 +11,12 @@ Destroy all asteroids while avoiding collisions and enemy fire. Each level becom
 - **Escape**: Quit game
 
 ## Gameplay Elements
+
+### Audio System
+- **Sound Effects**: Realistic arcade-style sound effects for shooting, thrusting, and explosions
+- **Background Music**: Dynamic beat music that changes based on remaining asteroids
+- **Enemy Sounds**: Alien ships make a distinct sound while on screen
+- **Audio Management**: All sounds automatically stop when the game ends
 
 ### Ship
 - Your triangular spaceship starts in the center of the screen
@@ -74,5 +76,8 @@ Destroy all asteroids while avoiding collisions and enemy fire. Each level becom
 
 ## Game Over
 - Game ends when you lose all lives
+- Asteroids and aliens continue moving in the background during game over screen
+- Ship destruction animation completes fully before showing game over
+- All sounds stop but visual animations continue
 - Press Spacebar to restart or Escape to quit
 - Try to beat your high score!

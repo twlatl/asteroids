@@ -20,13 +20,16 @@ asteroids/
 ├── main.rb               # Game entry point
 ├── start_game.sh         # Shell script to launch game
 ├── test_components.rb    # Basic component testing
+├── fonts/                # Custom font files (C&C Red Alert style)
+├── sounds/               # Audio files for sound effects and music
 └── lib/
     ├── game.rb           # Main game class and loop
     ├── ship.rb           # Player spaceship
     ├── asteroid.rb       # Asteroid objects (large, medium, small)
     ├── bullet.rb         # Bullet projectiles
     ├── alien.rb          # Enemy alien ships
-    └── particle.rb       # Explosion particle effects
+    ├── particle.rb       # Explosion particle effects
+    └── ship_debris.rb    # Ship destruction debris pieces
 ```
 
 ## Features Implemented
@@ -52,12 +55,14 @@ asteroids/
 - ✅ Shield power bar display
 - ✅ Safe respawn system (won't respawn near hazards)
 - ✅ Invulnerability period after ship destruction
-- ✅ Pause functionality
+- ✅ Pause functionality with visual overlay
 - ✅ Game over and restart mechanics
+- ✅ Animated game over screen (asteroids continue moving)
 - ✅ Vector-style graphics rendering
 - ✅ Custom retro font system (C&C Red Alert style)
 - ✅ Font fallback system for compatibility
 - ✅ Random asteroid shapes and movement
+- ✅ Complete audio system with sound effects and music
 
 ### Controls
 - **Arrow Keys**: Ship movement (left/right rotate, up thrust)
@@ -65,6 +70,14 @@ asteroids/
 - **S Key**: Activate shields (hold to maintain)
 - **P Key**: Pause/unpause game
 - **Escape**: Quit game
+
+### Audio System
+- **Fire Sound**: Plays when ship shoots
+- **Thrust Sound**: Loops while thrusting
+- **Explosion Sounds**: Different sounds for large/medium/small asteroid destruction
+- **Enemy Ship Sound**: Loops while alien ship is on screen
+- **Background Music**: Beat1 plays normally, switches to Beat2 when <30% asteroids remain
+- **Ship Destruction**: Explosion sound when player ship is destroyed
 
 ### Visual Effects
 - Vector-style line graphics (authentic to original)
