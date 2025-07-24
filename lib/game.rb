@@ -157,8 +157,8 @@ class Game < Gosu::Window
       asteroid_ratio = current_asteroid_count.to_f / initial_asteroid_count.to_f
       
       # Exponential formula: interval decreases exponentially as ratio approaches 0
-      # When ratio = 1.0 (all asteroids), interval = 3000ms
-      # When ratio ≈ 0.07 (1 asteroid of 14), interval = 500ms
+      # When ratio = 1.0 (all asteroids), interval = 1000ms
+      # When ratio ≈ 0.07 (1 asteroid of 14), interval = 250ms
       min_interval = 250
       max_interval = 1000
       @beat_interval = min_interval + (max_interval - min_interval) * (asteroid_ratio ** 2)
