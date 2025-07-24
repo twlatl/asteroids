@@ -8,6 +8,7 @@ Destroy all asteroids while avoiding collisions and enemy fire. Each level becom
 - **Right Arrow Key**: Rotate ship clockwise  
 - **Up Arrow Key**: Thrust forward (accelerate)
 - **Spacebar**: Fire bullets
+- **S Key**: Activate shields (hold to keep active)
 - **P**: Pause/unpause game
 - **Escape**: Quit game
 
@@ -20,6 +21,15 @@ Destroy all asteroids while avoiding collisions and enemy fire. Each level becom
 - After destruction, you respawn after 3 seconds with temporary invulnerability
 - The ship won't respawn if asteroids or aliens are too close to the spawn point
 - You start with 3 lives
+
+### Shield System
+- **Activation**: Hold the S key to activate shields
+- **Visual Effect**: A pulsating circle appears around your ship
+- **Protection**: Bullets and asteroids bounce off when shields are active
+- **Power Management**: Shield power drains 10% per second when active
+- **Recharge**: Shield power recharges 10% every 20 seconds when inactive
+- **Power Display**: Shield power bar shown in upper-right corner
+- **Visual Style**: Monochromatic white bar that decreases as power drains
 
 ### Asteroids
 - **Large Asteroids**: Split into 2 medium asteroids when destroyed (20 points)
@@ -56,6 +66,9 @@ Destroy all asteroids while avoiding collisions and enemy fire. Each level becom
 - Be careful when shooting large asteroids near your ship
 - Use screen wrapping to escape dangerous situations
 - Take advantage of invulnerability time after respawning
+- **Shield Management**: Use shields strategically - they're powerful but limited
+- **Bounce Tactics**: Bounced alien bullets become your bullets - aim them at targets!
+- **Power Conservation**: Don't keep shields on constantly - manage your power wisely
 
 ## Game Over
 - Game ends when you lose all lives

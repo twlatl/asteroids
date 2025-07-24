@@ -45,6 +45,10 @@ asteroids/
 - ✅ AI targeting for alien ships
 - ✅ Particle explosion effects
 - ✅ Ship destruction animation with spinning debris pieces
+- ✅ Shield system with power management
+- ✅ Shield visual effects (pulsating circle)
+- ✅ Bullet/asteroid bouncing off shields
+- ✅ Shield power bar display
 - ✅ Safe respawn system (won't respawn near hazards)
 - ✅ Invulnerability period after ship destruction
 - ✅ Pause functionality
@@ -55,6 +59,7 @@ asteroids/
 ### Controls
 - **Arrow Keys**: Ship movement (left/right rotate, up thrust)
 - **Spacebar**: Shoot bullets
+- **S Key**: Activate shields (hold to maintain)
 - **P**: Pause/unpause
 - **Escape**: Quit game
 

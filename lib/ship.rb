@@ -12,6 +12,9 @@ class Ship
   MAX_SPEED = 8
   FRICTION = 0.98
   INVULNERABILITY_TIME = 3000 # 3 seconds in milliseconds
+  SHIELD_DRAIN_RATE = 1.0 / 60.0 / 10.0 # 10% per second at 60 FPS
+  SHIELD_RECHARGE_RATE = 1.0 / 60.0 / 20.0 / 10.0 # 10% per 20 seconds at 60 FPS
+  SHIELD_RADIUS = 24
 
   def initialize(x, y)
     @x = x
@@ -25,6 +28,11 @@ class Ship
     @invulnerable_until = 0
     @destroyed = false
     @debris_created = false
+    
+    # Shield system
+    @shields_active = false
+    @shield_power = 1.0 # 100% power
+    @shield_pulse_timer = 0
   end
 
   def update
@@ -39,6 +47,9 @@ class Ship
     # Screen wrapping
     @x = (@x + Game::WIDTH) % Game::WIDTH
     @y = (@y + Game::HEIGHT) % Game::HEIGHT
+    
+    # Update shield system
+    update_shields
   end
 
   def turn_left
@@ -65,6 +76,49 @@ class Ship
       @velocity_x = (@velocity_x / speed) * MAX_SPEED
       @velocity_y = (@velocity_y / speed) * MAX_SPEED
     end
+  end
+
+  def activate_shields
+    if @shield_power > 0 && !@destroyed
+      @shields_active = true
+    end
+  end
+
+  def deactivate_shields
+    @shields_active = false
+  end
+
+  def shields_active?
+    @shields_active && @shield_power > 0
+  end
+
+  def shield_power
+    @shield_power
+  end
+
+  def update_shields
+    @shield_pulse_timer += 1
+    
+    if @shields_active
+      # Drain shield power when active
+      @shield_power -= SHIELD_DRAIN_RATE
+      
+      # Disable shields when power is depleted
+      if @shield_power <= 0
+        @shield_power = 0
+        @shields_active = false
+      end
+    else
+      # Recharge shields when not active
+      if @shield_power < 1.0
+        @shield_power += SHIELD_RECHARGE_RATE
+        @shield_power = [@shield_power, 1.0].min
+      end
+    end
+  end
+
+  def shield_collision_radius
+    SHIELD_RADIUS
   end
 
   def can_shoot?
@@ -97,6 +151,9 @@ class Ship
     @invulnerable_until = Gosu.milliseconds + INVULNERABILITY_TIME
     @destroyed = false
     @debris_created = false
+    @shields_active = false
+    @shield_power = 1.0 # Full power on respawn
+    @shield_pulse_timer = 0
   end
 
   def destroyed?
@@ -163,6 +220,9 @@ class Ship
       return
     end
 
+    # Draw shields first (behind ship)
+    draw_shields if shields_active?
+
     # Ship vertices (triangle pointing up)
     vertices = [
       [0, -@radius],      # tip
@@ -196,6 +256,35 @@ class Ship
   end
 
   private
+
+  def draw_shields
+    # Calculate pulsating effect
+    pulse_factor = (Math.sin(@shield_pulse_timer * 0.2) + 1) * 0.5 # 0 to 1
+    shield_alpha = (100 + pulse_factor * 100).to_i # 100 to 200 alpha
+    
+    # Shield color based on power level
+    if @shield_power > 0.6
+      color = Gosu::Color.new(shield_alpha, 0, 150, 255) # Blue
+    elsif @shield_power > 0.3
+      color = Gosu::Color.new(shield_alpha, 255, 255, 0) # Yellow
+    else
+      color = Gosu::Color.new(shield_alpha, 255, 100, 0) # Orange/Red
+    end
+    
+    # Draw shield circle using lines (approximated circle)
+    segments = 24
+    (0...segments).each do |i|
+      angle1 = (2 * Math::PI * i) / segments
+      angle2 = (2 * Math::PI * (i + 1)) / segments
+      
+      x1 = @x + Math.cos(angle1) * SHIELD_RADIUS
+      y1 = @y + Math.sin(angle1) * SHIELD_RADIUS
+      x2 = @x + Math.cos(angle2) * SHIELD_RADIUS
+      y2 = @y + Math.sin(angle2) * SHIELD_RADIUS
+      
+      Gosu.draw_line(x1, y1, color, x2, y2, color, 1)
+    end
+  end
 
   def draw_thrust_flame(vertices)
     # Draw flame from back of ship

@@ -158,7 +158,13 @@ class Game < Gosu::Window
 
     # Ship vs Asteroid collisions
     @asteroids.each do |asteroid|
-      if collision?(@ship, asteroid) && !@ship.invulnerable?
+      if @ship.shields_active?
+        # Check collision with shield radius
+        distance = Math.sqrt((@ship.x - asteroid.x)**2 + (@ship.y - asteroid.y)**2)
+        if distance < (@ship.shield_collision_radius + asteroid.radius)
+          bounce_object_off_ship(asteroid)
+        end
+      elsif collision?(@ship, asteroid) && !@ship.invulnerable?
         ship_destroyed
         break
       end
@@ -166,7 +172,13 @@ class Game < Gosu::Window
 
     # Ship vs Alien collisions
     @aliens.each do |alien|
-      if collision?(@ship, alien) && !@ship.invulnerable?
+      if @ship.shields_active?
+        # Check collision with shield radius
+        distance = Math.sqrt((@ship.x - alien.x)**2 + (@ship.y - alien.y)**2)
+        if distance < (@ship.shield_collision_radius + alien.radius)
+          bounce_object_off_ship(alien)
+        end
+      elsif collision?(@ship, alien) && !@ship.invulnerable?
         ship_destroyed
         break
       end
@@ -176,7 +188,14 @@ class Game < Gosu::Window
     @bullets.each do |bullet|
       next unless bullet.from_alien
 
-      if collision?(@ship, bullet) && !@ship.invulnerable?
+      if @ship.shields_active?
+        # Check collision with shield radius
+        distance = Math.sqrt((@ship.x - bullet.x)**2 + (@ship.y - bullet.y)**2)
+        if distance < (@ship.shield_collision_radius + bullet.radius)
+          # Bounce bullet
+          bounce_bullet_off_ship(bullet)
+        end
+      elsif collision?(@ship, bullet) && !@ship.invulnerable?
         ship_destroyed
         bullet.destroy
         break
@@ -215,6 +234,57 @@ class Game < Gosu::Window
     count.times do
       @particles << Particle.new(x, y)
     end
+  end
+
+  def bounce_object_off_ship(object)
+    # Calculate bounce direction (away from ship)
+    dx = object.x - @ship.x
+    dy = object.y - @ship.y
+    distance = Math.sqrt(dx**2 + dy**2)
+    
+    return if distance == 0 # Avoid division by zero
+    
+    # Normalize direction
+    dx /= distance
+    dy /= distance
+    
+    # Apply bounce velocity
+    bounce_force = 3.0
+    if object.respond_to?(:instance_variable_get)
+      current_vx = object.instance_variable_get(:@velocity_x) || 0
+      current_vy = object.instance_variable_get(:@velocity_y) || 0
+      
+      object.instance_variable_set(:@velocity_x, current_vx + dx * bounce_force)
+      object.instance_variable_set(:@velocity_y, current_vy + dy * bounce_force)
+    end
+    
+    # Create bounce particles
+    create_explosion_particles(@ship.x + dx * @ship.shield_collision_radius, 
+                             @ship.y + dy * @ship.shield_collision_radius, 3)
+  end
+
+  def bounce_bullet_off_ship(bullet)
+    # Calculate bounce direction (away from ship)
+    dx = bullet.x - @ship.x
+    dy = bullet.y - @ship.y
+    distance = Math.sqrt(dx**2 + dy**2)
+    
+    return if distance == 0
+    
+    # Normalize and reverse direction
+    dx /= distance
+    dy /= distance
+    
+    # Reverse bullet direction
+    current_vx = bullet.instance_variable_get(:@velocity_x)
+    current_vy = bullet.instance_variable_get(:@velocity_y)
+    
+    bullet.instance_variable_set(:@velocity_x, dx * Math.sqrt(current_vx**2 + current_vy**2))
+    bullet.instance_variable_set(:@velocity_y, dy * Math.sqrt(current_vx**2 + current_vy**2))
+    bullet.instance_variable_set(:@from_alien, false) # Now it's the player's bullet
+    
+    # Create bounce particles
+    create_explosion_particles(bullet.x, bullet.y, 2)
   end
 
   def ship_destroyed
@@ -290,6 +360,35 @@ class Game < Gosu::Window
     @font.draw_text("Score: #{@score}", 10, 10, 1, 1, 1, Gosu::Color::WHITE)
     @font.draw_text("Lives: #{@lives}", 10, 40, 1, 1, 1, Gosu::Color::WHITE)
     @font.draw_text("Level: #{@level}", 10, 70, 1, 1, 1, Gosu::Color::WHITE)
+    
+    # Draw shield power bar in upper right corner
+    draw_shield_power_bar
+  end
+
+  def draw_shield_power_bar
+    bar_width = 100
+    bar_height = 20
+    bar_x = WIDTH - bar_width - 10
+    bar_y = 10
+    
+    # Background bar
+    Gosu.draw_rect(bar_x, bar_y, bar_width, bar_height, Gosu::Color::GRAY, 1)
+    
+    # Power level bar (monochromatic white)
+    power_width = (bar_width - 4) * @ship.shield_power
+    if power_width > 0
+      color = Gosu::Color::WHITE
+      Gosu.draw_rect(bar_x + 2, bar_y + 2, power_width, bar_height - 4, color, 1)
+    end
+    
+    # Border
+    Gosu.draw_rect(bar_x, bar_y, bar_width, 2, Gosu::Color::WHITE, 1) # Top
+    Gosu.draw_rect(bar_x, bar_y + bar_height - 2, bar_width, 2, Gosu::Color::WHITE, 1) # Bottom
+    Gosu.draw_rect(bar_x, bar_y, 2, bar_height, Gosu::Color::WHITE, 1) # Left
+    Gosu.draw_rect(bar_x + bar_width - 2, bar_y, 2, bar_height, Gosu::Color::WHITE, 1) # Right
+    
+    # Label
+    @font.draw_text("SHIELDS", bar_x, bar_y + bar_height + 5, 1, 1, 1, Gosu::Color::WHITE)
   end
 
   def draw_game_over
@@ -348,6 +447,13 @@ class Game < Gosu::Window
     @ship.turn_left if Gosu.button_down?(Gosu::KB_LEFT)
     @ship.turn_right if Gosu.button_down?(Gosu::KB_RIGHT)
     @ship.thrust if Gosu.button_down?(Gosu::KB_UP)
+    
+    # Shield controls
+    if Gosu.button_down?(Gosu::KB_S)
+      @ship.activate_shields
+    else
+      @ship.deactivate_shields
+    end
   end
 
   def add_bullet(bullet)
