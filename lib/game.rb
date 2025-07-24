@@ -31,7 +31,14 @@ class Game < Gosu::Window
     load_sounds
     
     @@instance = self
-    reset_game
+    
+    # Game state management
+    @game_state = :start_screen  # :start_screen, :playing, :game_over
+    @beat_timer = 0
+    @beat_interval = 3000  # Start at 3 seconds (3000ms)
+    @last_beat_time = 0
+    
+    initialize_start_screen
   end
 
   def load_custom_font(size)
@@ -91,6 +98,26 @@ class Game < Gosu::Window
     @sounds = {}
   end
 
+  def initialize_start_screen
+    # Create asteroids for background animation
+    @asteroids = create_initial_asteroids
+    @bullets = []
+    @aliens = []
+    @particles = []
+    @ship_debris = []
+    @ship = Ship.new(SHIP_SPAWN_X, SHIP_SPAWN_Y)
+    @score = 0
+    @lives = 3
+    @level = 1
+    @last_alien_spawn = 0
+    @game_over = false
+    @paused = false
+    @respawn_timer = 0
+    
+    # Don't start beat sounds yet
+    stop_all_sounds
+  end
+
   def play_sound(sound_key, volume = 1.0)
     return unless @sounds[sound_key]
     @sounds[sound_key].play(volume)
@@ -107,38 +134,42 @@ class Game < Gosu::Window
 
   def stop_all_sounds
     # Stop all looping sounds
-    stop_sound(@current_beat)
     stop_sound(@saucer_sound)
     stop_sound(@thrust_sound)
     
     # Clear sound references
-    @current_beat = nil
     @saucer_sound = nil
     @thrust_sound = nil
-    @current_beat_type = nil
   end
 
   def update_background_music
-    return if @paused || @game_over
+    return if @paused || @game_over || @game_state != :playing
     
-    # Calculate asteroid percentage remaining
+    current_time = Gosu.milliseconds
+    
+    # Calculate beat interval based on asteroid count
     initial_asteroid_count = 4 + @level
     current_asteroid_count = @asteroids.length
-    asteroid_percentage = current_asteroid_count.to_f / initial_asteroid_count.to_f
     
-    # Switch between beat1 and beat2 based on asteroid count
-    if asteroid_percentage <= 0.3 # Less than 30% asteroids remaining
-      unless @current_beat_type == :beat2
-        stop_sound(@current_beat)
-        @current_beat = play_looping_sound(:beat2, 0.25)
-        @current_beat_type = :beat2
-      end
+    if current_asteroid_count > 0
+      # Calculate exponential rate increase as asteroids decrease
+      # Start at 3 seconds (3000ms), end at 0.5 seconds (500ms)
+      asteroid_ratio = current_asteroid_count.to_f / initial_asteroid_count.to_f
+      
+      # Exponential formula: interval decreases exponentially as ratio approaches 0
+      # When ratio = 1.0 (all asteroids), interval = 3000ms
+      # When ratio ≈ 0.07 (1 asteroid of 14), interval = 500ms
+      min_interval = 500
+      max_interval = 3000
+      @beat_interval = min_interval + (max_interval - min_interval) * (asteroid_ratio ** 2)
     else
-      unless @current_beat_type == :beat1
-        stop_sound(@current_beat)
-        @current_beat = play_looping_sound(:beat1, 0.25)
-        @current_beat_type = :beat1
-      end
+      @beat_interval = 3000  # Reset for next level
+    end
+    
+    # Play beat if enough time has passed
+    if current_time - @last_beat_time >= @beat_interval
+      play_sound(:beat1, 0.25)
+      @last_beat_time = current_time
     end
   end
 
@@ -156,13 +187,14 @@ class Game < Gosu::Window
     @game_over = false
     @paused = false
     @respawn_timer = 0
+    @game_state = :playing
     
-    # Stop any current sounds and start background music
-    stop_sound(@current_beat)
-    stop_sound(@saucer_sound)
-    stop_sound(@thrust_sound)
-    @current_beat = play_looping_sound(:beat1, 0.25)
-    @current_beat_type = :beat1
+    # Reset beat timing
+    @beat_interval = 3000
+    @last_beat_time = Gosu.milliseconds
+    
+    # Stop any current sounds
+    stop_all_sounds
   end
 
   def create_initial_asteroids
@@ -183,20 +215,29 @@ class Game < Gosu::Window
   end
 
   def update
-    update_input
-    
-    if @game_over
-      # Stop background music when game is over
-      if @current_beat
-        stop_sound(@current_beat)
-        @current_beat = nil
-        @current_beat_type = nil
-      end
-      
-      # Continue visual animations even when game is over
-      update_animations_only
-      return
+    case @game_state
+    when :start_screen
+      update_start_screen
+    when :playing
+      update_playing
+    when :game_over
+      update_game_over
     end
+  end
+
+  def update_start_screen
+    # Just animate asteroids in background
+    @asteroids.each(&:update)
+    @particles.each(&:update)
+    @ship_debris.each(&:update)
+    
+    # Remove old particles and debris
+    @particles.reject! { |particle| particle.should_remove? }
+    @ship_debris.reject! { |debris| debris.should_remove? }
+  end
+
+  def update_playing
+    update_input
     
     update_background_music
     
@@ -204,6 +245,14 @@ class Game < Gosu::Window
 
     # Full game logic update
     update_game_logic
+  end
+
+  def update_game_over
+    # Stop background music when game is over
+    stop_all_sounds
+    
+    # Continue visual animations even when game is over
+    update_animations_only
   end
 
   def update_animations_only
@@ -473,6 +522,7 @@ class Game < Gosu::Window
     @lives -= 1
     
     if @lives <= 0
+      @game_state = :game_over
       @game_over = true
       # Stop all sounds when game is over
       stop_all_sounds
@@ -519,6 +569,35 @@ class Game < Gosu::Window
 
   def draw
     # Draw game objects
+    case @game_state
+    when :start_screen
+      draw_start_screen
+    when :playing
+      draw_playing
+    when :game_over
+      draw_game_over_screen
+    end
+  end
+
+  def draw_start_screen
+    # Draw background asteroids
+    @asteroids.each(&:draw)
+    @particles.each(&:draw)
+    @ship_debris.each(&:draw)
+    
+    # Draw "Press any key to start" message
+    title_text = "ASTEROIDS"
+    start_text = "Press any key to start"
+    
+    title_width = @large_font.text_width(title_text)
+    start_width = @font.text_width(start_text)
+    
+    @large_font.draw_text(title_text, (WIDTH - title_width) / 2, HEIGHT / 2 - 60, 2, 1, 1, Gosu::Color::WHITE)
+    @font.draw_text(start_text, (WIDTH - start_width) / 2, HEIGHT / 2 + 20, 2, 1, 1, Gosu::Color::WHITE)
+  end
+
+  def draw_playing
+    # Draw game objects
     @ship.draw unless @ship.destroyed?
     @asteroids.each(&:draw)
     @bullets.each(&:draw)
@@ -529,11 +608,23 @@ class Game < Gosu::Window
     # Draw UI
     draw_ui
 
-    # Draw game over screen
-    draw_game_over if @game_over
-
     # Draw pause screen
     draw_pause if @paused
+  end
+
+  def draw_game_over_screen
+    # Draw game objects
+    @asteroids.each(&:draw)
+    @bullets.each(&:draw)
+    @aliens.each(&:draw)
+    @particles.each(&:draw)
+    @ship_debris.each(&:draw)
+
+    # Draw UI
+    draw_ui
+
+    # Draw game over screen
+    draw_game_over
   end
 
   def draw_ui
@@ -622,21 +713,34 @@ class Game < Gosu::Window
   end
 
   def button_down(id)
-    case id
-    when Gosu::KB_ESCAPE
-      stop_all_sounds
-      close
-    when Gosu::KB_SPACE
-      if @game_over
-        reset_game
-      elsif !@paused
-        if @ship.can_shoot?
-          @bullets << @ship.shoot
-          play_sound(:fire)
+    case @game_state
+    when :start_screen
+      # Any key starts the game
+      reset_game
+    when :playing
+      case id
+      when Gosu::KB_ESCAPE
+        stop_all_sounds
+        close
+      when Gosu::KB_SPACE
+        if !@paused
+          if @ship.can_shoot?
+            @bullets << @ship.shoot
+            play_sound(:fire)
+          end
         end
+      when Gosu::KB_P
+        @paused = !@paused
       end
-    when Gosu::KB_P
-      @paused = !@paused unless @game_over
+    when :game_over
+      case id
+      when Gosu::KB_ESCAPE
+        stop_all_sounds
+        close
+      when Gosu::KB_SPACE
+        initialize_start_screen
+        @game_state = :start_screen
+      end
     end
   end
 
@@ -646,6 +750,7 @@ class Game < Gosu::Window
 
   # Input handling for continuous key presses
   def update_input
+    return unless @game_state == :playing
     return if @game_over || @paused
 
     @ship.turn_left if Gosu.button_down?(Gosu::KB_LEFT)
