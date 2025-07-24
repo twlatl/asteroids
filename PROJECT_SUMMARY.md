@@ -1,4 +1,5 @@
-# Asteroids Ga├── lib/
+# Asteroids Ga├── fonts/                # Custom font files (C&C Red Alert style)
+├── lib/
     ├── game.rb           # Main game class and loop
     ├── ship.rb           # Player spaceship
     ├── asteroid.rb       # Asteroid objects (large, medium, small)
@@ -54,6 +55,8 @@ asteroids/
 - ✅ Pause functionality
 - ✅ Game over and restart mechanics
 - ✅ Vector-style graphics rendering
+- ✅ Custom retro font system (C&C Red Alert style)
+- ✅ Font fallback system for compatibility
 - ✅ Random asteroid shapes and movement
 
 ### Controls

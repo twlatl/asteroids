@@ -21,6 +21,11 @@ Run the game with:
 ruby main.rb
 ```
 
+Or use the font-checking launcher:
+```bash
+./start_with_font_check.sh
+```
+
 ### Controls
 
 - **Left Arrow**: Rotate ship left
@@ -49,3 +54,5 @@ ruby main.rb
 - Lives system
 - Asteroid splitting mechanics
 - Alien ships with AI targeting
+- Custom retro font support (C&C Red Alert style)
+- Authentic vector-style graphics
