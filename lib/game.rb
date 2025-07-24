@@ -11,7 +11,7 @@ class Game < Gosu::Window
   HEIGHT = 768
   SHIP_SPAWN_X = WIDTH / 2
   SHIP_SPAWN_Y = HEIGHT / 2
-  ALIEN_SPAWN_INTERVAL = 60_000 # 60 seconds in milliseconds
+  ALIEN_SPAWN_INTERVAL = 30_000 # 60 seconds in milliseconds
 
   @@instance = nil
 
@@ -35,7 +35,7 @@ class Game < Gosu::Window
     # Game state management
     @game_state = :start_screen  # :start_screen, :playing, :game_over
     @beat_timer = 0
-    @beat_interval = 3000  # Start at 3 seconds (3000ms)
+    @beat_interval = 500  # Start at 500ms
     @last_beat_time = 0
     
     initialize_start_screen
@@ -159,8 +159,8 @@ class Game < Gosu::Window
       # Exponential formula: interval decreases exponentially as ratio approaches 0
       # When ratio = 1.0 (all asteroids), interval = 3000ms
       # When ratio ≈ 0.07 (1 asteroid of 14), interval = 500ms
-      min_interval = 500
-      max_interval = 3000
+      min_interval = 250
+      max_interval = 1000
       @beat_interval = min_interval + (max_interval - min_interval) * (asteroid_ratio ** 2)
     else
       @beat_interval = 3000  # Reset for next level
