@@ -9,6 +9,10 @@ A Ruby implementation of the classic Asteroids arcade game using the Gosu game l
    ```bash
    bundle install
    ```
+3. **(Optional) Install Custom Font:**
+   - Download the C&C Red Alert font from: https://www.dafont.com/c-c-red-alert-inet.font
+   - Extract the ZIP and copy `C&C Red Alert [INET].ttf` to the `fonts/` directory
+   - The game will automatically use the custom font if available, otherwise falls back to system font
 
 ## How to Play
 

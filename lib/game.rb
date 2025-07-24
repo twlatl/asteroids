@@ -24,10 +24,34 @@ class Game < Gosu::Window
   def initialize
     super(WIDTH, HEIGHT)
     self.caption = "Asteroids"
-    @font = Gosu::Font.new(24)
-    @large_font = Gosu::Font.new(48)
+    
+    # Load custom fonts with fallback
+    @font = load_custom_font(24)
+    @large_font = load_custom_font(48)
+    
     @@instance = self
     reset_game
+  end
+
+  def load_custom_font(size)
+    # Try to load the custom C&C Red Alert font
+    font_path = File.join(File.dirname(__FILE__), '..', 'fonts', 'C&C Red Alert [INET].ttf')
+    
+    if File.exist?(font_path)
+      # Use custom font
+      Gosu::Font.new(size, name: font_path)
+    else
+      # Fallback to system font
+      puts "Custom font not found at #{font_path}. Using system font."
+      puts "To use the C&C Red Alert font, download it from:"
+      puts "https://www.dafont.com/c-c-red-alert-inet.font"
+      puts "and place 'C&C Red Alert [INET].ttf' in the fonts/ directory."
+      Gosu::Font.new(size)
+    end
+  rescue => e
+    puts "Error loading custom font: #{e.message}"
+    puts "Using system font as fallback."
+    Gosu::Font.new(size)
   end
 
   def reset_game
