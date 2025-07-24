@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 require 'gosu'
 require_relative 'ship'
 require_relative 'asteroid'
