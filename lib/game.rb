@@ -76,7 +76,8 @@ class Game < Gosu::Window
       bang_small: 'bangSmall.wav',
       saucer_big: 'saucerBig.wav',
       beat1: 'beat1.wav',
-      beat2: 'beat2.wav'
+      beat2: 'beat2.wav',
+      level_up: 'levelUp.mp3',
     }
     
     sound_files.each do |key, filename|
@@ -116,6 +117,14 @@ class Game < Gosu::Window
     
     # Don't start beat sounds yet
     stop_all_sounds
+  end
+
+  def award_life
+    if @score >= 5000 && @lives < 5 || @score >= 10000 && @lives < 5 || @score >= 25000 && @lives < 5
+      @lives += 1
+      play_sound(:level_up)
+      puts "Extra life awarded! Lives: #{@lives}"
+    end   
   end
 
   def play_sound(sound_key, volume = 1.0)
@@ -297,8 +306,16 @@ class Game < Gosu::Window
     # Check for level completion
     next_level if @asteroids.empty?
 
-    # Clean up dead aliens
+    # Clean up dead aliens and check for aliens that have exited screen bounds
     aliens_before = @aliens.length
+    
+    # Check for aliens that have moved too far off screen
+    @aliens.each do |alien|
+      if alien.x < -200 || alien.x > WIDTH + 200 || alien.y < -200 || alien.y > HEIGHT + 200
+        alien.instance_variable_set(:@destroyed, true) # Force removal
+      end
+    end
+    
     @aliens.reject! { |alien| alien.should_remove? }
     aliens_after = @aliens.length
     
@@ -373,6 +390,8 @@ class Game < Gosu::Window
           
           create_explosion_particles(alien.x, alien.y, 12)
           @score += alien.points
+          # Check for extra life award after scoring
+          award_life
           alien.destroy
           bullet.destroy
           break
@@ -450,6 +469,9 @@ class Game < Gosu::Window
       @score += 100
       # Just destroyed, no split
     end
+
+    # Check for extra life award after scoring
+    award_life
 
     @asteroids.delete(asteroid)
   end
@@ -565,6 +587,12 @@ class Game < Gosu::Window
     @aliens.clear
     @particles.clear
     @ship_debris.clear
+    
+    # Stop saucer sound as backup when level clears
+    if @saucer_sound
+      stop_sound(@saucer_sound)
+      @saucer_sound = nil
+    end
   end
 
   def draw

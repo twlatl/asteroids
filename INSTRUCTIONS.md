@@ -58,6 +58,7 @@ Destroy all asteroids while avoiding collisions and enemy fire. Each level becom
 - Medium asteroid: 50 points  
 - Small asteroid: 100 points
 - Alien ship: 1000 points
+- **Extra Life**: Earn an extra life every 5000 points (up to 5 lives maximum)
 
 ### Level Progression
 - Clear all asteroids to advance to the next level

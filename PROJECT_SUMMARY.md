@@ -100,6 +100,7 @@ asteroids/
 - **Screen Wrapping**: All objects wrap around screen edges
 - **Alien AI**: Appears every 60 seconds, shoots at player with slight inaccuracy
 - **Scoring**: 20/50/100 points for large/medium/small asteroids, 1000 for aliens
+- **Extra Lives**: Award extra life every 5000 points (maximum 5 lives)
 - **Progressive Difficulty**: More asteroids each level
 
 ## How to Run
