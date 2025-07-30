@@ -63,6 +63,7 @@ asteroids/
 - ✅ Font fallback system for compatibility
 - ✅ Random asteroid shapes and movement
 - ✅ Complete audio system with sound effects and music
+- ✅ High score system with persistent storage (JSON-based)
 
 ### Controls
 - **Arrow Keys**: Ship movement (left/right rotate, up thrust)
@@ -101,6 +102,7 @@ asteroids/
 - **Alien AI**: Appears every 60 seconds, shoots at player with slight inaccuracy
 - **Scoring**: 20/50/100 points for large/medium/small asteroids, 1000 for aliens
 - **Extra Lives**: Award extra life every 5000 points (maximum 5 lives)
+- **High Score System**: Tracks top 5 scores with initials and timestamps
 - **Progressive Difficulty**: More asteroids each level
 
 ## How to Run

@@ -1,4 +1,6 @@
 require 'gosu'
+require 'json'
+require 'date'
 require_relative 'ship'
 require_relative 'asteroid'
 require_relative 'bullet'
@@ -33,10 +35,17 @@ class Game < Gosu::Window
     @@instance = self
     
     # Game state management
-    @game_state = :start_screen  # :start_screen, :playing, :game_over
+    @game_state = :start_screen  # :start_screen, :playing, :game_over, :high_score_entry, :high_score_display
     @beat_timer = 0
     @beat_interval = 500  # Start at 500ms
     @last_beat_time = 0
+    
+    # High score system
+    @high_score_initials = ""
+    @high_score_cursor_blink = 0
+    
+    # Initialize database
+    init_high_score_database
     
     initialize_start_screen
   end
@@ -117,6 +126,66 @@ class Game < Gosu::Window
     
     # Don't start beat sounds yet
     stop_all_sounds
+  end
+
+  def init_high_score_database
+    @high_score_file = File.join(File.dirname(__FILE__), '..', 'high_scores.json')
+    
+    # Create empty high scores file if it doesn't exist
+    unless File.exist?(@high_score_file)
+      File.write(@high_score_file, JSON.pretty_generate([]))
+    end
+  rescue => e
+    puts "Error initializing high score file: #{e}"
+    @high_score_file = nil
+  end
+
+  def get_high_scores
+    return [] unless @high_score_file && File.exist?(@high_score_file)
+    
+    content = File.read(@high_score_file)
+    high_scores = JSON.parse(content)
+    
+    # Sort by score descending and return top 5
+    high_scores.sort_by { |score| -score['score'] }.first(5)
+  rescue => e
+    puts "Error reading high scores: #{e}"
+    []
+  end
+
+  def add_high_score(score, initials)
+    return unless @high_score_file
+    
+    high_scores = get_high_scores
+    
+    # Add new score
+    new_score = {
+      'datetime' => DateTime.now.strftime("%Y-%m-%d %H:%M:%S"),
+      'score' => score,
+      'initials' => initials.upcase
+    }
+    
+    high_scores << new_score
+    
+    # Keep only top 5 scores
+    high_scores = high_scores.sort_by { |s| -s['score'] }.first(5)
+    
+    # Write back to file
+    File.write(@high_score_file, JSON.pretty_generate(high_scores))
+  rescue => e
+    puts "Error saving high score: #{e}"
+  end
+
+  def is_high_score?(score)
+    return true unless @high_score_file
+    
+    high_scores = get_high_scores
+    return true if high_scores.length < 5
+    
+    lowest_high_score = high_scores.last['score']
+    score > lowest_high_score
+  rescue
+    true # Default to true if there's an error
   end
 
   def award_life
@@ -231,6 +300,10 @@ class Game < Gosu::Window
       update_playing
     when :game_over
       update_game_over
+    when :high_score_entry
+      update_high_score_entry
+    when :high_score_display
+      update_high_score_display
     end
   end
 
@@ -261,6 +334,25 @@ class Game < Gosu::Window
     stop_all_sounds
     
     # Continue visual animations even when game is over
+    update_animations_only
+  end
+
+  def update_high_score_entry
+    # Stop background music
+    stop_all_sounds
+    
+    # Continue visual animations
+    update_animations_only
+    
+    # Update cursor blink
+    @high_score_cursor_blink = (@high_score_cursor_blink + 1) % 60
+  end
+
+  def update_high_score_display
+    # Stop background music
+    stop_all_sounds
+    
+    # Continue visual animations
     update_animations_only
   end
 
@@ -546,6 +638,14 @@ class Game < Gosu::Window
     if @lives <= 0
       @game_state = :game_over
       @game_over = true
+      
+      # Check if this is a high score
+      if is_high_score?(@score)
+        @game_state = :high_score_entry
+        @high_score_initials = ""
+        @high_score_cursor_blink = 0
+      end
+      
       # Stop all sounds when game is over
       stop_all_sounds
     else
@@ -604,6 +704,10 @@ class Game < Gosu::Window
       draw_playing
     when :game_over
       draw_game_over_screen
+    when :high_score_entry
+      draw_high_score_entry
+    when :high_score_display
+      draw_high_score_display
     end
   end
 
@@ -740,6 +844,90 @@ class Game < Gosu::Window
     @font.draw_text(continue_text, (WIDTH - continue_width) / 2, box_y + box_height + 30, 2, 1, 1, Gosu::Color::WHITE)
   end
 
+  def draw_high_score_entry
+    # Draw game objects in background
+    @asteroids.each(&:draw)
+    @bullets.each(&:draw)
+    @aliens.each(&:draw)
+    @particles.each(&:draw)
+    @ship_debris.each(&:draw)
+
+    # Draw UI
+    draw_ui
+
+    # Draw overlay
+    overlay = Gosu::Color.new(128, 0, 0, 0)
+    Gosu.draw_rect(0, 0, WIDTH, HEIGHT, overlay)
+    
+    # Draw high score entry screen
+    text = "NEW HIGH SCORE!"
+    text_width = @large_font.text_width(text)
+    @large_font.draw_text(text, (WIDTH - text_width) / 2, HEIGHT / 2 - 100, 2, 1, 1, Gosu::Color::YELLOW)
+    
+    score_text = "Score: #{@score}"
+    score_width = @font.text_width(score_text)
+    @font.draw_text(score_text, (WIDTH - score_width) / 2, HEIGHT / 2 - 50, 2, 1, 1, Gosu::Color::WHITE)
+    
+    initials_text = "Enter your initials:"
+    initials_width = @font.text_width(initials_text)
+    @font.draw_text(initials_text, (WIDTH - initials_width) / 2, HEIGHT / 2, 2, 1, 1, Gosu::Color::WHITE)
+    
+    # Draw initials input with cursor
+    input_text = @high_score_initials + ((@high_score_cursor_blink < 30) ? "_" : " ")
+    input_width = @large_font.text_width(input_text)
+    @large_font.draw_text(input_text, (WIDTH - input_width) / 2, HEIGHT / 2 + 40, 2, 1, 1, Gosu::Color::WHITE)
+    
+    instruction_text = "Press ENTER when done"
+    instruction_width = @font.text_width(instruction_text)
+    @font.draw_text(instruction_text, (WIDTH - instruction_width) / 2, HEIGHT / 2 + 100, 2, 1, 1, Gosu::Color::WHITE)
+  end
+
+  def draw_high_score_display
+    # Draw game objects in background
+    @asteroids.each(&:draw)
+    @bullets.each(&:draw)
+    @aliens.each(&:draw)
+    @particles.each(&:draw)
+    @ship_debris.each(&:draw)
+
+    # Draw overlay
+    overlay = Gosu::Color.new(128, 0, 0, 0)
+    Gosu.draw_rect(0, 0, WIDTH, HEIGHT, overlay)
+    
+    # Draw high scores
+    title_text = "HIGH SCORES"
+    title_width = @large_font.text_width(title_text)
+    @large_font.draw_text(title_text, (WIDTH - title_width) / 2, HEIGHT / 2 - 150, 2, 1, 1, Gosu::Color::YELLOW)
+    
+    high_scores = get_high_scores
+    high_scores.each_with_index do |score_entry, index|
+      y_position = HEIGHT / 2 - 80 + (index * 40)
+      rank_text = "#{index + 1}."
+      score_text = "#{score_entry['initials']} - #{score_entry['score']}"
+      
+      # Draw rank
+      @font.draw_text(rank_text, WIDTH / 2 - 150, y_position, 2, 1, 1, Gosu::Color::WHITE)
+      
+      # Draw initials and score
+      @font.draw_text(score_text, WIDTH / 2 - 100, y_position, 2, 1, 1, Gosu::Color::WHITE)
+      
+      # Draw date in Month Day, Year format
+      begin
+        parsed_date = DateTime.parse(score_entry['datetime'])
+        formatted_date = parsed_date.strftime("%B %d, %Y")
+        @font.draw_text(formatted_date, WIDTH / 2 + 100, y_position, 2, 0.8, 0.8, Gosu::Color::GRAY)
+      rescue
+        # Fallback to original format if parsing fails
+        date_only = score_entry['datetime'].split(' ')[0]
+        @font.draw_text(date_only, WIDTH / 2 + 100, y_position, 2, 0.8, 0.8, Gosu::Color::GRAY)
+      end
+    end
+    
+    start_text = "Press any key to start new game"
+    start_width = @font.text_width(start_text)
+    @font.draw_text(start_text, (WIDTH - start_width) / 2, HEIGHT / 2 + 120, 2, 1, 1, Gosu::Color::WHITE)
+  end
+
   def button_down(id)
     case @game_state
     when :start_screen
@@ -769,6 +957,45 @@ class Game < Gosu::Window
         initialize_start_screen
         @game_state = :start_screen
       end
+    when :high_score_entry
+      case id
+      when Gosu::KB_ESCAPE
+        stop_all_sounds
+        close
+      when Gosu::KB_RETURN, Gosu::KB_ENTER
+        # Save the high score and show high score table
+        initials = @high_score_initials.length > 0 ? @high_score_initials : "AAA"
+        add_high_score(@score, initials)
+        @game_state = :high_score_display
+      when Gosu::KB_BACKSPACE
+        @high_score_initials = @high_score_initials[0...-1] if @high_score_initials.length > 0
+      else
+        # Handle letter input
+        if @high_score_initials.length < 3
+          key_char = id_to_char(id)
+          @high_score_initials += key_char if key_char
+        end
+      end
+    when :high_score_display
+      case id
+      when Gosu::KB_ESCAPE
+        stop_all_sounds
+        close
+      else
+        # Any other key starts a new game
+        initialize_start_screen
+        @game_state = :start_screen
+      end
+    end
+  end
+
+  def id_to_char(id)
+    # Convert key ID to character for initials input
+    case id
+    when Gosu::KB_A..Gosu::KB_Z
+      ('A'.ord + (id - Gosu::KB_A)).chr
+    else
+      nil
     end
   end
 

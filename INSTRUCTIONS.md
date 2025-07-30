@@ -60,6 +60,12 @@ Destroy all asteroids while avoiding collisions and enemy fire. Each level becom
 - Alien ship: 1000 points
 - **Extra Life**: Earn an extra life every 5000 points (up to 5 lives maximum)
 
+### High Scores
+- **Top 5 Scores**: The game tracks the top 5 highest scores
+- **New High Score**: When you achieve a top 5 score, enter your 3-letter initials
+- **High Score Display**: View the high score table after setting a new record
+- **Persistent Storage**: High scores are saved between game sessions
+
 ### Level Progression
 - Clear all asteroids to advance to the next level
 - Each level starts with more asteroids
@@ -75,10 +81,12 @@ Destroy all asteroids while avoiding collisions and enemy fire. Each level becom
 - **Bounce Tactics**: Bounced alien bullets become your bullets - aim them at targets!
 - **Power Conservation**: Don't keep shields on constantly - manage your power wisely
 
-## Game Over
+## Game Over & High Scores
 - Game ends when you lose all lives
 - Asteroids and aliens continue moving in the background during game over screen
 - Ship destruction animation completes fully before showing game over
 - All sounds stop but visual animations continue
+- **High Score Entry**: If you achieve a top 5 score, enter your initials (A-Z keys, ENTER to confirm)
+- **High Score Display**: View the high score table showing rank, initials, score, and date
 - Press Spacebar to restart or Escape to quit
 - Try to beat your high score!
