@@ -123,6 +123,7 @@ class Game < Gosu::Window
     @game_over = false
     @paused = false
     @respawn_timer = 0
+    @last_life_score = 0  # Initialize extra life tracking
     
     # Don't start beat sounds yet
     stop_all_sounds
@@ -189,11 +190,36 @@ class Game < Gosu::Window
   end
 
   def award_life
-    if @score >= 5000 && @lives < 5 || @score >= 10000 && @lives < 5 || @score >= 25000 && @lives < 5
-      @lives += 1
-      play_sound(:level_up)
-      puts "Extra life awarded! Lives: #{@lives}"
-    end   
+    # Track the last score milestone for extra life awards
+    @last_life_score ||= 0
+    
+    # Define the extra life thresholds
+    thresholds = [10_000, 25_000, 50_000, 100_000]
+    
+    # Check for standard thresholds first
+    thresholds.each do |threshold|
+      if @score >= threshold && @last_life_score < threshold
+        @lives += 1
+        @last_life_score = threshold
+        play_sound(:level_up)
+        puts "Extra life awarded at #{threshold} points! Lives: #{@lives}"
+        return
+      end
+    end
+    
+    # Check for every 100,000 points after 100,000
+    if @score >= 100_000
+      # Calculate how many 100k intervals we've passed
+      current_interval = (@score / 100_000) * 100_000
+      last_interval = (@last_life_score / 100_000) * 100_000
+      
+      if current_interval > last_interval && current_interval > 100_000
+        @lives += 1
+        @last_life_score = current_interval
+        play_sound(:level_up)
+        puts "Extra life awarded at #{current_interval} points! Lives: #{@lives}"
+      end
+    end
   end
 
   def play_sound(sound_key, volume = 1.0)
@@ -266,6 +292,7 @@ class Game < Gosu::Window
     @paused = false
     @respawn_timer = 0
     @game_state = :playing
+    @last_life_score = 0  # Reset extra life tracking
     
     # Reset beat timing
     @beat_interval = 3000
