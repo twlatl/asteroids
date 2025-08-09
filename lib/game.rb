@@ -39,6 +39,7 @@ class Game < Gosu::Window
     @beat_timer = 0
     @beat_interval = 500  # Start at 500ms
     @last_beat_time = 0
+    @help_screen = false  # Help screen overlay state
     
     # High score system
     @high_score_initials = ""
@@ -124,6 +125,7 @@ class Game < Gosu::Window
     @paused = false
     @respawn_timer = 0
     @last_life_score = 0  # Initialize extra life tracking
+    @help_screen = false  # Reset help screen state
     
     # Don't start beat sounds yet
     stop_all_sounds
@@ -293,6 +295,7 @@ class Game < Gosu::Window
     @respawn_timer = 0
     @game_state = :playing
     @last_life_score = 0  # Reset extra life tracking
+    @help_screen = false  # Reset help screen state
     
     # Reset beat timing
     @beat_interval = 3000
@@ -350,7 +353,7 @@ class Game < Gosu::Window
     
     update_background_music
     
-    return if @paused
+    return if @paused || @help_screen
 
     # Full game logic update
     update_game_logic
@@ -769,6 +772,9 @@ class Game < Gosu::Window
 
     # Draw pause screen
     draw_pause if @paused
+    
+    # Draw help screen
+    draw_help if @help_screen
   end
 
   def draw_game_over_screen
@@ -867,6 +873,63 @@ class Game < Gosu::Window
     @large_font.draw_text(text, box_x + box_padding, box_y + box_padding, 2, 1, 1, Gosu::Color::WHITE)
     
     continue_text = "Press P to continue"
+    continue_width = @font.text_width(continue_text)
+    @font.draw_text(continue_text, (WIDTH - continue_width) / 2, box_y + box_height + 30, 2, 1, 1, Gosu::Color::WHITE)
+  end
+
+  def draw_help
+    overlay = Gosu::Color.new(128, 0, 0, 0)
+    Gosu.draw_rect(0, 0, WIDTH, HEIGHT, overlay)
+    
+    title_text = "KEYBOARD CODES"
+    title_width = @large_font.text_width(title_text)
+    title_height = @large_font.height
+    
+    # Calculate content dimensions
+    controls = [
+      "Up Arrow - Forward Thrust",
+      "Left Arrow - Left",
+      "Right Arrow - Right", 
+      "Down Arrow - Flip Ship",
+      "Space Bar - Fire",
+      "S - Shields"
+    ]
+    
+    max_text_width = controls.map { |text| @font.text_width(text) }.max
+    content_width = [title_width, max_text_width].max
+    
+    # Calculate box dimensions
+    box_padding = 30
+    line_height = 30
+    content_height = title_height + (controls.length * line_height) + 10
+    box_width = content_width + (box_padding * 2)
+    box_height = content_height + (box_padding * 2)
+    box_x = (WIDTH - box_width) / 2
+    box_y = (HEIGHT - box_height) / 2
+    
+    # Draw box background
+    Gosu.draw_rect(box_x, box_y, box_width, box_height, Gosu::Color::BLACK, 2)
+    
+    # Draw box border
+    border_width = 3
+    Gosu.draw_rect(box_x, box_y, box_width, border_width, Gosu::Color::WHITE, 2) # Top
+    Gosu.draw_rect(box_x, box_y + box_height - border_width, box_width, border_width, Gosu::Color::WHITE, 2) # Bottom
+    Gosu.draw_rect(box_x, box_y, border_width, box_height, Gosu::Color::WHITE, 2) # Left
+    Gosu.draw_rect(box_x + box_width - border_width, box_y, border_width, box_height, Gosu::Color::WHITE, 2) # Right
+    
+    # Draw title
+    title_x = box_x + (box_width - title_width) / 2
+    @large_font.draw_text(title_text, title_x, box_y + box_padding, 2, 1, 1, Gosu::Color::YELLOW)
+    
+    # Draw controls
+    controls.each_with_index do |control_text, index|
+      y_position = box_y + box_padding + title_height + 10 + (index * line_height)
+      control_x = box_x + box_padding
+      @font.draw_text(control_text, control_x, y_position, 2, 1, 1, Gosu::Color::WHITE)
+    end
+    
+    # Draw instruction
+    continue_text = "Press H to close"
     continue_width = @font.text_width(continue_text)
     @font.draw_text(continue_text, (WIDTH - continue_width) / 2, box_y + box_height + 30, 2, 1, 1, Gosu::Color::WHITE)
   end
@@ -974,6 +1037,8 @@ class Game < Gosu::Window
         end
       when Gosu::KB_P
         @paused = !@paused
+      when Gosu::KB_H
+        @help_screen = !@help_screen
       end
     when :game_over
       case id
@@ -1033,7 +1098,7 @@ class Game < Gosu::Window
   # Input handling for continuous key presses
   def update_input
     return unless @game_state == :playing
-    return if @game_over || @paused
+    return if @game_over || @paused || @help_screen
 
     @ship.turn_left if Gosu.button_down?(Gosu::KB_LEFT)
     @ship.turn_right if Gosu.button_down?(Gosu::KB_RIGHT)
@@ -1051,6 +1116,18 @@ class Game < Gosu::Window
         stop_sound(@thrust_sound)
         @thrust_sound = nil
       end
+    end
+
+    # Flip ship on Down Arrow (one-shot trigger on press)
+    if Gosu.button_down?(Gosu::KB_DOWN)
+      # Debounce: trigger only once per press using a flag
+      @down_pressed ||= false
+      unless @down_pressed
+        @ship.start_flip
+        @down_pressed = true
+      end
+    else
+      @down_pressed = false
     end
     
     # Shield controls

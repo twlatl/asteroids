@@ -15,6 +15,7 @@ class Ship
   SHIELD_DRAIN_RATE = 1.0 / 60.0 / 10.0 # 10% per second at 60 FPS
   SHIELD_RECHARGE_RATE = 1.0 / 60.0 / 20.0 / 10.0 # 10% per 20 seconds at 60 FPS
   SHIELD_RADIUS = 24
+  FLIP_SPEED = 30.0 # degrees per frame while flipping
 
   def initialize(x, y)
     @x = x
@@ -33,6 +34,11 @@ class Ship
     @shields_active = false
     @shield_power = 1.0 # 100% power
     @shield_pulse_timer = 0
+
+    # Flip state
+    @flipping = false
+    @flip_target_angle = 0
+    @flip_direction = 1
   end
 
   def update
@@ -50,13 +56,26 @@ class Ship
     
     # Update shield system
     update_shields
+
+    # Handle flipping rotation
+    if @flipping
+      diff = angle_difference(@flip_target_angle, @angle)
+      if diff.abs <= FLIP_SPEED
+        @angle = @flip_target_angle
+        @flipping = false
+      else
+        @angle = normalize_angle(@angle + (FLIP_SPEED * @flip_direction))
+      end
+    end
   end
 
   def turn_left
+    return if @flipping
     @angle -= ROTATION_SPEED
   end
 
   def turn_right
+    return if @flipping
     @angle += ROTATION_SPEED
   end
 
@@ -301,5 +320,25 @@ class Ship
     color = Gosu::Color.new(255, 255, rand(100) + 155, 0) # Yellow to orange
     Gosu.draw_line(vertices[1][0], vertices[1][1], color, flame_x, flame_y, color, 1)
     Gosu.draw_line(vertices[2][0], vertices[2][1], color, flame_x, flame_y, color, 1)
+  end
+
+  def start_flip
+    return if @destroyed || @flipping
+    @flip_target_angle = normalize_angle(@angle + 180)
+    diff = angle_difference(@flip_target_angle, @angle)
+    @flip_direction = diff >= 0 ? 1 : -1
+    @flipping = true
+  end
+
+  public :start_flip
+
+  def normalize_angle(a)
+    a % 360
+  end
+
+  def angle_difference(target, current)
+    diff = normalize_angle(target - current)
+    diff -= 360 if diff > 180
+    diff
   end
 end
